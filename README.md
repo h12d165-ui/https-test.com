@@ -1,2 +1,784 @@
 # https-test.com
 창작자 피드백 분석 및 심리적 부담 완화를 위한 AI
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webtoon-Comment-BERT | 웹툰 창작자 지원 AI 시스템</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            900: '#4c1d95',
+                        },
+                        darkbg: '#0b0f19',
+                        cardbg: '#111827',
+                        borderbg: '#1f2937'
+                    },
+                    fontFamily: {
+                        sans: ['Noto Sans KR', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #0b0f19; color: #f3f4f6; }
+        .glass-panel { background: rgba(17, 24, 39, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .gradient-text { background: linear-gradient(135deg, #a78bfa 0%, #818cf8 50%, #38bdf8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .gradient-border { position: relative; border-radius: 1rem; }
+        .gradient-border::before { content: ''; position: absolute; inset: -1px; border-radius: 1.05rem; background: linear-gradient(135deg, #7c3aed, #3b82f6); z-index: -1; opacity: 0.4; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0b0f19; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
+
+    <!-- Navigation Bar -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-brand-500/30">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div>
+                    <span class="font-extrabold text-lg tracking-wide text-white">Webtoon-Comment-<span class="gradient-text">BERT</span></span>
+                    <span class="text-xs bg-brand-900/80 text-brand-300 border border-brand-500/30 px-2 py-0.5 rounded-full ml-2">v2.0 Model</span>
+                </div>
+            </div>
+            <nav class="hidden md:flex space-x-6 text-sm font-medium text-gray-300">
+                <a href="#research" class="hover:text-brand-300 transition-colors">연구배경 & 모델</a>
+                <a href="#simulator" class="hover:text-brand-300 transition-colors">실시간 분석기</a>
+                <a href="#analytics" class="hover:text-brand-300 transition-colors">회차별 통계</a>
+                <a href="#digest" class="hover:text-brand-300 transition-colors">창작자 피드백</a>
+                <a href="#deploy" class="hover:text-brand-300 transition-colors">GitHub 배포 가이드</a>
+            </nav>
+            <div class="flex items-center space-x-3">
+                <a href="https://github.com" target="_blank" class="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 text-white px-3.5 py-1.5 rounded-lg text-sm font-medium border border-gray-700 transition-all">
+                    <i class="fa-brands fa-github text-base"></i>
+                    <span>GitHub Repo</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12 flex-grow">
+
+        <!-- HERO SECTION -->
+        <section class="relative py-8 md:py-12 overflow-hidden">
+            <div class="absolute -top-10 -left-10 w-72 h-72 bg-brand-600/20 rounded-full filter blur-3xl"></div>
+            <div class="absolute top-20 right-10 w-96 h-96 bg-indigo-600/15 rounded-full filter blur-3xl"></div>
+            
+            <div class="relative z-10 text-center max-w-4xl mx-auto space-y-6">
+                <div class="inline-flex items-center space-x-2 bg-brand-950/80 border border-brand-500/40 text-brand-300 text-xs md:text-sm px-4 py-1.5 rounded-full">
+                    <i class="fa-solid fa-microchip text-brand-400"></i>
+                    <span>트랜스포머 BERT 기반 미세조정(Fine-Tuned) 독자 댓글 정제 AI</span>
+                </div>
+                
+                <h1 class="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight">
+                    웹툰 창작자의 심리를 보호하고<br>
+                    <span class="gradient-text">유용한 피드백만 전달합니다</span>
+                </h1>
+                
+                <p class="text-gray-400 text-base sm:text-lg max-w-2xl mx-auto font-light leading-relaxed">
+                    그림 생성 AI를 넘어 <strong>창작자의 정신적 부담 감소 및 작품성 개선</strong>을 지원하는 인공지능 파이프라인. 모욕적 악플은 클린봇 시ールド로 자동 차단하고, 건설적 비판과 응원 메시지를 회차별로 정리합니다.
+                </p>
+
+                <!-- Status Summary Quick Stats -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 max-w-3xl mx-auto text-left">
+                    <div class="glass-panel p-4 rounded-xl border border-gray-800">
+                        <div class="text-xs text-gray-400">악플 자동 차단율</div>
+                        <div class="text-2xl font-bold text-emerald-400 mt-1">98.4%</div>
+                        <div class="text-[10px] text-gray-500 mt-0.5"><i class="fa-solid fa-shield text-emerald-500/70"></i> 심리적 유해 감지</div>
+                    </div>
+                    <div class="glass-panel p-4 rounded-xl border border-gray-800">
+                        <div class="text-xs text-gray-400">핵심 분류 레이블</div>
+                        <div class="text-2xl font-bold text-brand-400 mt-1">4 Categories</div>
+                        <div class="text-[10px] text-gray-500 mt-0.5">건설적/취향/모욕/응원</div>
+                    </div>
+                    <div class="glass-panel p-4 rounded-xl border border-gray-800">
+                        <div class="text-xs text-gray-400">4대 속성 가공</div>
+                        <div class="text-2xl font-bold text-indigo-400 mt-1">Multi-Attribute</div>
+                        <div class="text-[10px] text-gray-500 mt-0.5">의도/감정/공격성/구체성</div>
+                    </div>
+                    <div class="glass-panel p-4 rounded-xl border border-gray-800">
+                        <div class="text-xs text-gray-400">도메인 특화</div>
+                        <div class="text-2xl font-bold text-sky-400 mt-1">Fine-Tuned</div>
+                        <div class="text-[10px] text-gray-500 mt-0.5">Ma et al. (2019) 근거</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 1: RESEARCH & MODEL COMPARISON -->
+        <section id="research" class="space-y-6">
+            <div class="border-l-4 border-brand-500 pl-4">
+                <h2 class="text-2xl font-bold text-white">1. 연구 배경 및 AI 모델 비교 (ML vs BERT)</h2>
+                <p class="text-sm text-gray-400">왜 머신러닝이 아닌 트랜스포머 기반 자연어 처리(BERT) 기법이 필요할까요?</p>
+            </div>
+
+            <!-- Comparison Cards Grid -->
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Traditional ML Card -->
+                <div class="glass-panel p-6 rounded-2xl border border-gray-800 relative overflow-hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center text-gray-400">
+                                <i class="fa-solid fa-calculator text-lg"></i>
+                            </div>
+                            <h3 class="text-lg font-bold text-gray-300">머신러닝 기반 텍스트 분류</h3>
+                        </div>
+                        <span class="text-xs bg-gray-800 text-gray-400 px-2.5 py-1 rounded-full">전통적 방식</span>
+                    </div>
+                    <ul class="space-y-2.5 text-sm text-gray-400">
+                        <li class="flex items-start space-x-2">
+                            <i class="fa-solid fa-check text-green-500 mt-1 text-xs"></i>
+                            <span>단어 및 표현 특징 분석으로 구동 방식이 간단함</span>
+                        </li>
+                        <li class="flex items-start space-x-2">
+                            <i class="fa-solid fa-check text-green-500 mt-1 text-xs"></i>
+                            <span>연산 자원이 적게 들고 빠른 학습 및 분류 속도</span>
+                        </li>
+                        <li class="flex items-start space-x-2 text-rose-400">
+                            <i class="fa-solid fa-xmark mt-1 text-xs"></i>
+                            <span><strong>한계:</strong> 단어 맥락, 반어법, 돌려 말하기의 의미 이해 불가능</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Transformer BERT Card -->
+                <div class="glass-panel p-6 rounded-2xl border border-brand-500/40 relative overflow-hidden gradient-border">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-lg bg-brand-900/80 flex items-center justify-center text-brand-300">
+                                <i class="fa-solid fa-brain text-lg"></i>
+                            </div>
+                            <h3 class="text-lg font-bold text-white">트랜스포머 기반 자연어 처리 (BERT)</h3>
+                        </div>
+                        <span class="text-xs bg-brand-900 text-brand-300 border border-brand-500/50 px-2.5 py-1 rounded-full font-semibold">본 연구 채택</span>
+                    </div>
+                    <ul class="space-y-2.5 text-sm text-gray-300">
+                        <li class="flex items-start space-x-2">
+                            <i class="fa-solid fa-check text-brand-400 mt-1 text-xs"></i>
+                            <span>문장 속 단어 간 관계 및 전체 맥락을 고려한 정교한 의미 파악</span>
+                        </li>
+                        <li class="flex items-start space-x-2">
+                            <i class="fa-solid fa-check text-brand-400 mt-1 text-xs"></i>
+                            <span>복잡한 은유, 반어법, 웹툰 도메인 특유의 감정선 분석에 유리</span>
+                        </li>
+                        <li class="flex items-start space-x-2 text-indigo-300">
+                            <i class="fa-solid fa-arrows-spin mt-1 text-xs"></i>
+                            <span><strong>미세조정(Fine-Tuning):</strong> Ma 외(2019) 연구에 따라 웹툰 댓글 데이터를 추가 학습시켜 타겟 분야 성능 저하 문제 완전 극복</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 4 Core Attributes Cards -->
+            <div class="glass-panel p-6 rounded-2xl border border-gray-800">
+                <h3 class="text-md font-bold text-white mb-4 flex items-center space-x-2">
+                    <i class="fa-solid fa-list-check text-brand-400"></i>
+                    <span>댓글 분석을 위한 4가지 핵심 속성 가공 체계</span>
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-gray-900/90 p-4 rounded-xl border border-gray-800">
+                        <div class="text-brand-400 font-semibold text-sm mb-1"><i class="fa-solid fa-compass mr-1.5"></i>1. 문맥 및 의미</div>
+                        <p class="text-xs text-gray-400 leading-relaxed">단순 단어가 아닌 전체 문장의 숨은 의도와 메인 주제를 추론</p>
+                    </div>
+                    <div class="bg-gray-900/90 p-4 rounded-xl border border-gray-800">
+                        <div class="text-indigo-400 font-semibold text-sm mb-1"><i class="fa-solid fa-face-smile mr-1.5"></i>2. 감정 상태</div>
+                        <p class="text-xs text-gray-400 leading-relaxed">독자의 태도를 긍정(Positive), 부정(Negative), 중립(Neutral)으로 분류</p>
+                    </div>
+                    <div class="bg-gray-900/90 p-4 rounded-xl border border-gray-800">
+                        <div class="text-rose-400 font-semibold text-sm mb-1"><i class="fa-solid fa-burst mr-1.5"></i>3. 공격성 수치</div>
+                        <p class="text-xs text-gray-400 leading-relaxed">모욕, 인신공격 여부에 따라 높음(High) / 낮음(Low) 판단</p>
+                    </div>
+                    <div class="bg-gray-900/90 p-4 rounded-xl border border-gray-800">
+                        <div class="text-sky-400 font-semibold text-sm mb-1"><i class="fa-solid fa-bullseye mr-1.5"></i>4. 피드백 구체성</div>
+                        <p class="text-xs text-gray-400 leading-relaxed">작화, 연출, 개연성 등 구체적 지적 여부(높음/낮음) 판별</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: INTERACTIVE BERT COMMENT ANALYZER -->
+        <section id="simulator" class="space-y-6">
+            <div class="border-l-4 border-indigo-500 pl-4">
+                <h2 class="text-2xl font-bold text-white">2. 실시간 BERT 댓글 분석 시뮬레이터</h2>
+                <p class="text-sm text-gray-400">댓글을 입력하거나 예시 버튼을 눌러 AI 분류 알고리즘을 실시간 테스트해보세요.</p>
+            </div>
+
+            <div class="grid lg:grid-cols-12 gap-6">
+                <!-- Left: Input & Preset Selector -->
+                <div class="lg:col-span-6 glass-panel p-6 rounded-2xl border border-gray-800 space-y-4 flex flex-col justify-between">
+                    <div>
+                        <label for="commentInput" class="block text-sm font-semibold text-gray-300 mb-2">
+                            독자 댓글 입력
+                        </label>
+                        <textarea id="commentInput" rows="4" class="w-full bg-gray-950 border border-gray-800 rounded-xl p-3.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all resize-none" placeholder="웹툰 댓글을 여기에 입력하세요..."></textarea>
+                    </div>
+
+                    <!-- Preset Samples -->
+                    <div>
+                        <span class="text-xs font-semibold text-gray-400 block mb-2">샘플 테스트 케이스 클릭:</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <button onclick="loadSample(1)" class="text-left text-xs bg-gray-900 hover:bg-gray-800 border border-gray-800 text-gray-300 p-2.5 rounded-lg transition-colors flex items-center justify-between">
+                                <span class="truncate">1. "이번 회차 컷 배치가 어색..."</span>
+                                <span class="text-[10px] bg-sky-950 text-sky-400 px-1.5 py-0.5 rounded ml-1 shrink-0">비판</span>
+                            </button>
+                            <button onclick="loadSample(2)" class="text-left text-xs bg-gray-900 hover:bg-gray-800 border border-gray-800 text-gray-300 p-2.5 rounded-lg transition-colors flex items-center justify-between">
+                                <span class="truncate">2. "남주 머리 스타일 전 회차가..."</span>
+                                <span class="text-[10px] bg-purple-950 text-purple-400 px-1.5 py-0.5 rounded ml-1 shrink-0">취향</span>
+                            </button>
+                            <button onclick="loadSample(3)" class="text-left text-xs bg-gray-900 hover:bg-gray-800 border border-gray-800 text-gray-300 p-2.5 rounded-lg transition-colors flex items-center justify-between">
+                                <span class="truncate">3. "작가 수준 진짜 노답이네..."</span>
+                                <span class="text-[10px] bg-rose-950 text-rose-400 px-1.5 py-0.5 rounded ml-1 shrink-0">모욕</span>
+                            </button>
+                            <button onclick="loadSample(4)" class="text-left text-xs bg-gray-900 hover:bg-gray-800 border border-gray-800 text-gray-300 p-2.5 rounded-lg transition-colors flex items-center justify-between">
+                                <span class="truncate">4. "이번 연출 진짜 소름돋았..."</span>
+                                <span class="text-[10px] bg-emerald-950 text-emerald-400 px-1.5 py-0.5 rounded ml-1 shrink-0">응원</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button onclick="analyzeComment()" id="btnAnalyze" class="w-full bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-semibold py-3 rounded-xl shadow-lg shadow-brand-600/30 transition-all flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>BERT 분석 실행</span>
+                    </button>
+                </div>
+
+                <!-- Right: Real-time Analysis Result Output -->
+                <div class="lg:col-span-6 glass-panel p-6 rounded-2xl border border-gray-800 flex flex-col justify-between relative" id="resultCard">
+                    <!-- Default State Placeholder -->
+                    <div id="placeholderState" class="h-full flex flex-col items-center justify-center text-center py-12 text-gray-500 space-y-3">
+                        <i class="fa-solid fa-robot text-4xl text-gray-700"></i>
+                        <p class="text-sm">왼쪽 입력창에 댓글을 입력하거나 샘플을 선택한 후<br><strong class="text-gray-400">[BERT 분석 실행]</strong>을 눌러주세요.</p>
+                    </div>
+
+                    <!-- Loader State -->
+                    <div id="loaderState" class="hidden h-full flex flex-col items-center justify-center py-12 space-y-3">
+                        <div class="w-10 h-10 border-4 border-brand-500/30 border-t-brand-500 rounded-full animate-spin"></div>
+                        <p class="text-sm text-brand-300 font-medium">BERT Transformer 문맥 분석 중...</p>
+                    </div>
+
+                    <!-- Result Display Area -->
+                    <div id="analysisResult" class="hidden space-y-5">
+                        <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+                            <div>
+                                <span class="text-xs text-gray-400">최종 예측 카테고리</span>
+                                <div id="resCategoryBadge" class="mt-1 text-base font-extrabold px-3 py-1 rounded-lg inline-block">
+                                    --
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs text-gray-400 block">AI 신뢰도 score</span>
+                                <span id="resConfidence" class="text-xl font-black text-white">00.0%</span>
+                            </div>
+                        </div>
+
+                        <!-- 4 Core Attributes Meter -->
+                        <div class="space-y-3 text-xs">
+                            <div>
+                                <div class="flex justify-between text-gray-300 mb-1">
+                                    <span><i class="fa-solid fa-compass text-brand-400 mr-1"></i>문맥 의도 (Intent)</span>
+                                    <span id="resIntent" class="font-bold text-white">--</span>
+                                </div>
+                                <div class="w-full bg-gray-900 rounded-full h-2">
+                                    <div id="barIntent" class="bg-brand-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-gray-300 mb-1">
+                                    <span><i class="fa-solid fa-face-smile text-indigo-400 mr-1"></i>감정 분석 (Sentiment)</span>
+                                    <span id="resSentiment" class="font-bold text-white">--</span>
+                                </div>
+                                <div class="w-full bg-gray-900 rounded-full h-2">
+                                    <div id="barSentiment" class="bg-indigo-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-gray-300 mb-1">
+                                    <span><i class="fa-solid fa-burst text-rose-400 mr-1"></i>공격성 수치 (Aggressiveness)</span>
+                                    <span id="resAggressiveness" class="font-bold text-white">--</span>
+                                </div>
+                                <div class="w-full bg-gray-900 rounded-full h-2">
+                                    <div id="barAggressiveness" class="bg-rose-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-gray-300 mb-1">
+                                    <span><i class="fa-solid fa-bullseye text-sky-400 mr-1"></i>피드백 구체성 (Specificity)</span>
+                                    <span id="resSpecificity" class="font-bold text-white">--</span>
+                                </div>
+                                <div class="w-full bg-gray-900 rounded-full h-2">
+                                    <div id="barSpecificity" class="bg-sky-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Creator Shield Status Banner -->
+                        <div id="shieldStatusBanner" class="p-3.5 rounded-xl border flex items-center space-x-3 transition-all">
+                            <i id="shieldIcon" class="text-xl"></i>
+                            <div class="text-xs">
+                                <div id="shieldTitle" class="font-bold"></div>
+                                <div id="shieldDesc" class="text-gray-400 mt-0.5"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: EPISODE ANALYTICS & CHARTS -->
+        <section id="analytics" class="space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-l-4 border-sky-500 pl-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">3. 회차별 시각화 분석 (Analytics Dashboard)</h2>
+                    <p class="text-sm text-gray-400">수집된 회차 데이터를 바탕으로 댓글 분포 및 감정 비율을 조회합니다.</p>
+                </div>
+                <!-- Episode Selector -->
+                <div class="flex items-center space-x-2">
+                    <label for="episodeSelect" class="text-xs text-gray-400 shrink-0">회차 선택:</label>
+                    <select id="episodeSelect" onchange="updateCharts()" class="bg-gray-900 border border-gray-700 text-white text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-brand-500">
+                        <option value="10">제 10화 - 컷 배치 & 구도 이슈 회차</option>
+                        <option value="11" selected>제 11화 - 3D 소재 & 캐릭터 서사 회차</option>
+                        <option value="12">제 12화 - 특별 연출 & 시즌 완결 회차</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Bar Chart Card -->
+                <div class="glass-panel p-6 rounded-2xl border border-gray-800">
+                    <h3 class="text-sm font-bold text-gray-200 mb-4 flex items-center justify-between">
+                        <span><i class="fa-solid fa-chart-bar text-brand-400 mr-2"></i>댓글 유형 및 공격성 분포 (막대그래프)</span>
+                        <span id="epTag1" class="text-[10px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded">11화 데이터</span>
+                    </h3>
+                    <div class="h-64 relative">
+                        <canvas id="typeBarChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Doughnut Chart Card -->
+                <div class="glass-panel p-6 rounded-2xl border border-gray-800">
+                    <h3 class="text-sm font-bold text-gray-200 mb-4 flex items-center justify-between">
+                        <span><i class="fa-solid fa-chart-pie text-indigo-400 mr-2"></i>감정 비율 & 피드백 구체성 (원그래프)</span>
+                        <span id="epTag2" class="text-[10px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded">11화 데이터</span>
+                    </h3>
+                    <div class="h-64 relative">
+                        <canvas id="sentimentPieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: CURATED CREATOR FEEDBACK DIGEST -->
+        <section id="digest" class="space-y-6">
+            <div class="border-l-4 border-emerald-500 pl-4">
+                <h2 class="text-2xl font-bold text-white">4. 창작자 피드백 정제 리포트 (Filtered Digest)</h2>
+                <p class="text-sm text-gray-400">악성 댓글은 자동 필터링되어 차단되며, 작품 개선에 도움 되는 의견만 전달됩니다.</p>
+            </div>
+
+            <div class="glass-panel p-6 rounded-2xl border border-gray-800 space-y-6">
+                <!-- Filter Metrics Summary Header -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pb-6 border-b border-gray-800">
+                    <div class="bg-gray-900/80 p-4 rounded-xl">
+                        <span class="text-xs text-gray-400 block">선별된 건전 피드백</span>
+                        <span id="metricGood" class="text-2xl font-black text-emerald-400">142 건</span>
+                        <span class="text-[10px] text-emerald-500/80 block mt-0.5">건설적 비판 + 응원</span>
+                    </div>
+                    <div class="bg-gray-900/80 p-4 rounded-xl">
+                        <span class="text-xs text-gray-400 block">차단된 모욕 및 악플</span>
+                        <span id="metricShielded" class="text-2xl font-black text-rose-400">18 건</span>
+                        <span class="text-[10px] text-rose-500/80 block mt-0.5">창작자 노출 완전 차단</span>
+                    </div>
+                    <div class="bg-gray-900/80 p-4 rounded-xl">
+                        <span class="text-xs text-gray-400 block">핵심 키워드 Top 3</span>
+                        <span id="metricKeywords" class="text-sm font-bold text-sky-300 mt-1 block">#3D소재 #서사개연성 #가독성</span>
+                    </div>
+                </div>
+
+                <!-- Topic Keyword Filter Cloud -->
+                <div>
+                    <span class="text-xs text-gray-400 block mb-2 font-medium">자주 언급된 주요 개선 키워드:</span>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="bg-brand-950 text-brand-300 border border-brand-500/40 text-xs px-3 py-1 rounded-full cursor-pointer hover:bg-brand-900">#가독성 (24)</span>
+                        <span class="bg-brand-950 text-brand-300 border border-brand-500/40 text-xs px-3 py-1 rounded-full cursor-pointer hover:bg-brand-900">#3D소재_채색 (18)</span>
+                        <span class="bg-brand-950 text-brand-300 border border-brand-500/40 text-xs px-3 py-1 rounded-full cursor-pointer hover:bg-brand-900">#전개속도 (15)</span>
+                        <span class="bg-brand-950 text-brand-300 border border-brand-500/40 text-xs px-3 py-1 rounded-full cursor-pointer hover:bg-brand-900">#인체구도 (11)</span>
+                        <span class="bg-brand-950 text-brand-300 border border-brand-500/40 text-xs px-3 py-1 rounded-full cursor-pointer hover:bg-brand-900">#캐릭터서사 (9)</span>
+                    </div>
+                </div>
+
+                <!-- Curated Comments List -->
+                <div class="space-y-3">
+                    <h3 class="text-xs font-bold text-gray-300 uppercase tracking-wider">우선 검토 추천 피드백 목록</h3>
+                    
+                    <div id="digestList" class="space-y-2.5">
+                        <!-- Items dynamically rendered or updated -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 5: GITHUB PAGES DEPLOYMENT GUIDE -->
+        <section id="deploy" class="space-y-6">
+            <div class="border-l-4 border-purple-500 pl-4">
+                <h2 class="text-2xl font-bold text-white">5. GitHub Pages 배포 안내 (Deployment Guide)</h2>
+                <p class="text-sm text-gray-400">본 대시보드 페이지를 깃허브에 쉽게 배포하는 단계별 가이드입니다.</p>
+            </div>
+
+            <div class="glass-panel p-6 rounded-2xl border border-gray-800">
+                <div class="grid md:grid-cols-4 gap-4">
+                    <div class="bg-gray-900/90 p-4 rounded-xl border border-gray-800 space-y-2">
+                        <div class="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-xs">1</div>
+                        <h4 class="text-sm font-bold text-white">파일 저장</h4>
+                        <p class="text-xs text-gray-400">이 소스코드를 소스 파일 최상위 경로에 <code class="bg-gray-800 px-1 py-0.5 rounded text-brand-300">index.html</code>로 저장합니다.</p>
+                    </div>
+
+                    <div class="bg-gray-900/90 p-4 rounded-xl border border-gray-800 space-y-2">
+                        <div class="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-xs">2</div>
+                        <h4 class="text-sm font-bold text-white">저장소 커밋</h4>
+                        <p class="text-xs text-gray-400"><code class="bg-gray-800 px-1 py-0.5 rounded text-brand-300">git add index.html</code> 및 <code class="bg-gray-800 px-1 py-0.5 rounded text-brand-300">git push origin main</code> 명령어를 통해 업로드합니다.</p>
+                    </div>
+
+                    <div class="bg-gray-900/90 p-4 rounded-xl border border-gray-800 space-y-2">
+                        <div class="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-xs">3</div>
+                        <h4 class="text-sm font-bold text-white">Pages 설정</h4>
+                        <p class="text-xs text-gray-400">GitHub 저장소의 <strong>Settings &rarr; Pages</strong> 메뉴로 이동합니다.</p>
+                    </div>
+
+                    <div class="bg-gray-900/90 p-4 rounded-xl border border-gray-800 space-y-2">
+                        <div class="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-xs">4</div>
+                        <h4 class="text-sm font-bold text-white">배포 완료</h4>
+                        <p class="text-xs text-gray-400">Build and deployment에서 <strong>Branch: main / root</strong> 선택 후 Save를 클릭하면 대시보드가 라이브 호스팅됩니다.</p>
+                    </div>
+                </div>
+
+                <!-- Code Block for Terminal -->
+                <div class="mt-6 bg-gray-950 p-4 rounded-xl border border-gray-800">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-mono text-gray-400"><i class="fa-solid fa-terminal mr-2"></i>Git Terminal Commands</span>
+                        <button onclick="copyGitCommands()" class="text-xs text-brand-400 hover:text-brand-300"><i class="fa-regular fa-copy mr-1"></i>명령어 복사</button>
+                    </div>
+                    <pre id="gitCode" class="text-xs font-mono text-emerald-400 overflow-x-auto leading-relaxed">git add index.html
+git commit -m "Feat: Add Webtoon-Comment-BERT interactive web dashboard"
+git branch -M main
+git push -u origin main</pre>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 glass-panel py-8 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center space-y-3">
+            <p class="text-sm text-gray-400">
+                <strong>Webtoon-Comment-BERT Project</strong> &copy; 2026. 창작자 보호 및 피드백 선별 인공지능 연구.
+            </p>
+            <p class="text-xs text-gray-600">
+                본 대시보드는 BERT Fine-Tuning 및 4대 속성 분석 모델을 시각화한 데모 프로젝트 페이지입니다.
+            </p>
+        </div>
+    </footer>
+
+    <!-- INTERACTIVE JAVASCRIPT LOGIC -->
+    <script>
+        // Preset Sample Data
+        const sampleTexts = {
+            1: "이번 회차 컷 배치가 어색해서 가독성이 떨어집니다. 인체 구도 수정이 필요해 보여요.",
+            2: "남주 머리 스타일 전 회차가 훨씬 좋았는데 아쉽네요.",
+            3: "작가 수준 진짜 노답이네 당장 때려치워라 ㅋㅋㅋ",
+            4: "이번 연출 진짜 소름돋았습니다! 다음주까지 어떻게 기다리나요 ㅠㅠ"
+        };
+
+        // Load Preset into Textarea
+        function loadSample(id) {
+            document.getElementById('commentInput').value = sampleTexts[id];
+            analyzeComment();
+        }
+
+        // BERT Simulator Analysis Engine logic
+        function analyzeComment() {
+            const input = document.getElementById('commentInput').value.trim();
+            if (!input) {
+                alert('분석할 댓글 내용을 입력해주세요.');
+                return;
+            }
+
+            const placeholder = document.getElementById('placeholderState');
+            const loader = document.getElementById('loaderState');
+            const resultArea = document.getElementById('analysisResult');
+
+            // UI State Switching
+            placeholder.classList.add('hidden');
+            resultArea.classList.add('hidden');
+            loader.classList.remove('hidden');
+
+            setTimeout(() => {
+                loader.classList.add('hidden');
+                resultArea.classList.remove('hidden');
+
+                // Rules-based Simulation corresponding to BERT predictions
+                let category, confidence, intent, sentiment, aggressiveness, specificity, isMalicious;
+
+                if (input.includes("노답") || input.includes("때려치워라") || input.includes("쓰레기") || input.includes("개못함")) {
+                    category = "모욕적 표현";
+                    confidence = "98.7%";
+                    intent = "인신공격 및 비하";
+                    sentiment = "부정 (Negative)";
+                    aggressiveness = "높음 (High)";
+                    specificity = "낮음 (Low)";
+                    isMalicious = true;
+                } else if (input.includes("컷 배치") || input.includes("가독성") || input.includes("구도") || input.includes("개연성") || input.includes("3D") || input.includes("채색")) {
+                    category = "건설적 비판";
+                    confidence = "94.2%";
+                    intent = "작품성 개선 지적";
+                    sentiment = "부정/중립";
+                    aggressiveness = "낮음 (Low)";
+                    specificity = "높음 (High)";
+                    isMalicious = false;
+                } else if (input.includes("머리") || input.includes("아쉽") || input.includes("취향") || input.includes("스타일")) {
+                    category = "개인적 취향";
+                    confidence = "91.5%";
+                    intent = "개인 선호 표현";
+                    sentiment = "중립 (Neutral)";
+                    aggressiveness = "낮음 (Low)";
+                    specificity = "낮음 (Low)";
+                    isMalicious = false;
+                } else {
+                    category = "응원 / 기타";
+                    confidence = "96.8%";
+                    intent = "작가 호의 표출";
+                    sentiment = "긍정 (Positive)";
+                    aggressiveness = "낮음 (Low)";
+                    specificity = "낮음 (Low)";
+                    isMalicious = false;
+                }
+
+                // Render Badge & Details
+                const badge = document.getElementById('resCategoryBadge');
+                badge.textContent = category;
+
+                if (category === "건설적 비판") {
+                    badge.className = "mt-1 text-sm font-extrabold px-3 py-1 rounded-lg inline-block bg-sky-950 text-sky-300 border border-sky-500/40";
+                } else if (category === "개인적 취향") {
+                    badge.className = "mt-1 text-sm font-extrabold px-3 py-1 rounded-lg inline-block bg-purple-950 text-purple-300 border border-purple-500/40";
+                } else if (category === "모욕적 표현") {
+                    badge.className = "mt-1 text-sm font-extrabold px-3 py-1 rounded-lg inline-block bg-rose-950 text-rose-300 border border-rose-500/40";
+                } else {
+                    badge.className = "mt-1 text-sm font-extrabold px-3 py-1 rounded-lg inline-block bg-emerald-950 text-emerald-300 border border-emerald-500/40";
+                }
+
+                document.getElementById('resConfidence').textContent = confidence;
+                document.getElementById('resIntent').textContent = intent;
+                document.getElementById('resSentiment').textContent = sentiment;
+                document.getElementById('resAggressiveness').textContent = aggressiveness;
+                document.getElementById('resSpecificity').textContent = specificity;
+
+                // Animate Meter Bars
+                document.getElementById('barIntent').style.width = isMalicious ? "90%" : "75%";
+                document.getElementById('barSentiment').style.width = sentiment.includes("긍정") ? "95%" : (sentiment.includes("부정") ? "30%" : "60%");
+                document.getElementById('barAggressiveness').style.width = isMalicious ? "95%" : "15%";
+                document.getElementById('barSpecificity').style.width = specificity.includes("높음") ? "90%" : "25%";
+
+                // Shield Status
+                const shieldBanner = document.getElementById('shieldStatusBanner');
+                const shieldIcon = document.getElementById('shieldIcon');
+                const shieldTitle = document.getElementById('shieldTitle');
+                const shieldDesc = document.getElementById('shieldDesc');
+
+                if (isMalicious) {
+                    shieldBanner.className = "p-3.5 rounded-xl border flex items-center space-x-3 bg-rose-950/60 border-rose-500/50 text-rose-300";
+                    shieldIcon.className = "fa-solid fa-shield-virus text-2xl text-rose-400";
+                    shieldTitle.textContent = "🛡️ [클린보호 차단 완료] 심리 유해 댓글 차단됨";
+                    shieldDesc.textContent = "창작자 대시보드 노출이 자동 차단되어 대피소에 개별 보관됩니다.";
+                } else {
+                    shieldBanner.className = "p-3.5 rounded-xl border flex items-center space-x-3 bg-emerald-950/60 border-emerald-500/50 text-emerald-300";
+                    shieldIcon.className = "fa-solid fa-circle-check text-2xl text-emerald-400";
+                    shieldTitle.textContent = "✅ [정제 승인] 안전한 피드백으로 분류됨";
+                    shieldDesc.textContent = "작품 개선 가이드 및 회차별 요약 리포트에 포함되어 수집됩니다.";
+                }
+
+            }, 400);
+        }
+
+        // CHART.JS INITIALIZATION & DYNAMIC UPDATES
+        let typeChartInstance = null;
+        let sentimentChartInstance = null;
+
+        const episodeData = {
+            10: {
+                categories: [28, 15, 6, 45], // 건설적, 취향, 모욕, 응원
+                sentiments: [45, 34, 15], // 긍정, 부정, 중립
+                feedbacks: [
+                    { type: "건설적 비판", text: "이번 회차 컷 배치가 어색해서 가독성이 떨어집니다. 인체 구도 수정이 필요해 보여요.", kw: "가독성/구도" },
+                    { type: "건설적 비판", text: "대사 창 크기가 너무 커서 그림 인물을 가리는 부분이 있습니다.", kw: "가독성" },
+                    { type: "응원", text: "오늘 연출 진짜 대박이네요! 작가님 건강 챙기시길 바랍니다.", kw: "연출" }
+                ]
+            },
+            11: {
+                categories: [35, 22, 4, 60],
+                sentiments: [60, 39, 22],
+                feedbacks: [
+                    { type: "건설적 비판", text: "스마트폰 3D 소재가 배경에서 튀어 보입니다. 채색 보정을 조금 더 신경써주시면 좋겠습니다.", kw: "3D소재/채색" },
+                    { type: "건설적 비판", text: "악당 캐릭터 서사가 갑자기 너무 뜬금없어서 개연성이 부족한 느낌이에요.", kw: "서사/개연성" },
+                    { type: "응원", text: "마감하시느라 고생하셨습니다! 다음주도 무조건 본방사수 합니다.", kw: "응원" }
+                ]
+            },
+            12: {
+                categories: [18, 12, 2, 95],
+                sentiments: [95, 20, 12],
+                feedbacks: [
+                    { type: "건설적 비판", text: "시즌1 완결 축하드립니다! 다만 액션씬 효과음이 약간 짧았던 점은 아쉽네요.", kw: "액션/효과음" },
+                    { type: "응원", text: "최고의 웹툰! 휴재 기간 동안 푹 쉬시고 건강히 돌아오세요!", kw: "완결축하" },
+                    { type: "응원", text: "인생 웹툰 만들어주셔서 감사합니다. 작가님 화이팅!", kw: "응원" }
+                ]
+            }
+        };
+
+        function initCharts() {
+            // Bar Chart
+            const ctx1 = document.getElementById('typeBarChart').getContext('2d');
+            typeChartInstance = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: ['건설적 비판', '개인적 취향', '모욕적 표현(차단)', '응원 / 기타'],
+                    datasets: [{
+                        label: '댓글 수',
+                        data: episodeData[11].categories,
+                        backgroundColor: [
+                            'rgba(56, 189, 248, 0.7)',
+                            'rgba(168, 85, 247, 0.7)',
+                            'rgba(244, 63, 94, 0.7)',
+                            'rgba(52, 211, 153, 0.7)'
+                        ],
+                        borderColor: [
+                            '#38bdf8',
+                            '#a855f7',
+                            '#f43f5e',
+                            '#34d399'
+                        ],
+                        borderWidth: 1,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#9ca3af', font: { size: 11 } }, grid: { display: false } },
+                        y: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' } }
+                    }
+                }
+            });
+
+            // Doughnut Chart
+            const ctx2 = document.getElementById('sentimentPieChart').getContext('2d');
+            sentimentChartInstance = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['긍정 (Positive)', '부정 (Negative)', '중립 (Neutral)'],
+                    datasets: [{
+                        data: episodeData[11].sentiments,
+                        backgroundColor: [
+                            'rgba(52, 211, 153, 0.8)',
+                            'rgba(244, 63, 94, 0.8)',
+                            'rgba(148, 163, 184, 0.8)'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#d1d5db', font: { size: 11 } }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+
+            renderCuratedFeedbacks(11);
+        }
+
+        function updateCharts() {
+            const ep = document.getElementById('episodeSelect').value;
+            const data = episodeData[ep];
+
+            document.getElementById('epTag1').textContent = ep + "화 데이터";
+            document.getElementById('epTag2').textContent = ep + "화 데이터";
+
+            typeChartInstance.data.datasets[0].data = data.categories;
+            typeChartInstance.update();
+
+            sentimentChartInstance.data.datasets[0].data = data.sentiments;
+            sentimentChartInstance.update();
+
+            renderCuratedFeedbacks(ep);
+        }
+
+        function renderCuratedFeedbacks(ep) {
+            const list = document.getElementById('digestList');
+            const items = episodeData[ep].feedbacks;
+
+            list.innerHTML = items.map(item => `
+                <div class="p-3.5 rounded-xl bg-gray-900/90 border border-gray-800 flex items-start justify-between space-x-3">
+                    <div class="space-y-1">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded ${item.type === '건설적 비판' ? 'bg-sky-950 text-sky-300 border border-sky-500/30' : 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'}">${item.type}</span>
+                            <span class="text-[10px] text-gray-500">키워드: ${item.kw}</span>
+                        </div>
+                        <p class="text-xs text-gray-200">${item.text}</p>
+                    </div>
+                    <span class="text-[10px] text-emerald-400 bg-emerald-950/60 px-2 py-1 rounded shrink-0"><i class="fa-solid fa-check mr-1"></i>창작자 전달</span>
+                </div>
+            `).join('');
+        }
+
+        function copyGitCommands() {
+            const code = document.getElementById('gitCode').innerText;
+            document.execCommand('copy');
+            alert('Git 배포 명령어 파일 내용이 클립보드에 복사되었습니다!');
+        }
+
+        // Window Load Event
+        window.onload = function() {
+            initCharts();
+        };
+    </script>
+</body>
+</html>
